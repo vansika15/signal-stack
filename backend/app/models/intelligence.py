@@ -41,3 +41,21 @@ class IntelligenceItem(Base):
 
     company = relationship("Company", back_populates="intelligence_items")
     source = relationship("Source", back_populates="intelligence_items")
+
+    @property
+    def is_crawled(self) -> bool:
+        """Distinguish genuinely crawled web records from seeded baseline demo data"""
+        if not self.id:
+            return False
+        # Seeded records have IDs like 'intel_mu_...', 'intel_init_...', etc.
+        # Crawled records are generated with format 'intel_<timestamp>_<source>'
+        return bool(self.source_id and not self.id.startswith("intel_mu_") and not self.id.startswith("intel_init_"))
+
+    @property
+    def confidence_level(self) -> str:
+        """Derived confidence level based on verification status and evidence strength"""
+        if self.verification_status == "Verified" and self.evidence_strength == "High":
+            return "High"
+        elif self.verification_status == "Unverified" or self.evidence_strength == "Low":
+            return "Low"
+        return "Medium"

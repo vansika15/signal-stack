@@ -5,7 +5,8 @@ import { IntelligenceItem } from '../types';
 import { RankingModal } from '../components/RankingModal';
 import {
   Rss, Search, Filter, Sparkles, ExternalLink,
-  ShieldCheck, AlertTriangle, Calendar, Award, CheckCircle2
+  ShieldCheck, AlertTriangle, Calendar, Award, CheckCircle2,
+  Radio, Globe, Database
 } from 'lucide-react';
 
 export const IntelligenceFeedPage: React.FC = () => {
@@ -16,6 +17,7 @@ export const IntelligenceFeedPage: React.FC = () => {
   const [selectedImpact, setSelectedImpact] = useState('All');
   const [selectedUrgency, setSelectedUrgency] = useState('All');
   const [selectedVerification, setSelectedVerification] = useState('All');
+  const [selectedOrigin, setSelectedOrigin] = useState<'All' | 'Crawled' | 'Seeded'>('All');
   const [loading, setLoading] = useState(true);
   const [selectedSignal, setSelectedSignal] = useState<IntelligenceItem | null>(null);
 
@@ -49,12 +51,22 @@ export const IntelligenceFeedPage: React.FC = () => {
 
   if (!activeCompany) return null;
 
+  // Filter by origin (Genuinely Crawled vs Seeded Baseline)
+  const filteredSignals = signals.filter(item => {
+    if (selectedOrigin === 'Crawled') return item.is_crawled;
+    if (selectedOrigin === 'Seeded') return !item.is_crawled;
+    return true;
+  });
+
+  const crawledCount = signals.filter(s => s.is_crawled).length;
+  const seededCount = signals.filter(s => !s.is_crawled).length;
+
   return (
     <div className="space-y-6">
       {/* Header Banner */}
       <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
             <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400">
               Live Verified Feed
             </span>
@@ -68,6 +80,19 @@ export const IntelligenceFeedPage: React.FC = () => {
           <p className="text-xs text-slate-500 mt-1">
             Chronological, explainably ranked evidence items discovered across public and internal intelligence channels.
           </p>
+
+          {/* Data Provenance Counter Bar */}
+          <div className="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+            <span className="font-semibold text-slate-600 dark:text-slate-400">Data Origin Breakdown:</span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-50 dark:bg-cyan-950/50 text-cyan-700 dark:text-cyan-300 font-bold border border-cyan-200 dark:border-cyan-800">
+              <Radio className="w-3 h-3 text-cyan-500 animate-pulse" />
+              <span>{crawledCount} Genuinely Crawled Live</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700">
+              <Database className="w-3 h-3 text-indigo-500" />
+              <span>{seededCount} Seeded Strategic Baseline</span>
+            </span>
+          </div>
         </div>
       </div>
 
@@ -92,7 +117,25 @@ export const IntelligenceFeedPage: React.FC = () => {
           </button>
         </form>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+        {/* Origin Quick Tabs */}
+        <div className="flex items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+          <span className="text-[11px] font-semibold text-slate-500 mr-1">Provenance:</span>
+          {(['All', 'Crawled', 'Seeded'] as const).map((origin) => (
+            <button
+              key={origin}
+              onClick={() => setSelectedOrigin(origin)}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                selectedOrigin === origin
+                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              {origin === 'All' ? `All Signals (${signals.length})` : origin === 'Crawled' ? `Genuinely Crawled (${crawledCount})` : `Seeded Baseline (${seededCount})`}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs pt-2">
           <div>
             <label className="block text-[11px] font-semibold text-slate-500 mb-1">Pillar Category</label>
             <select
@@ -155,7 +198,7 @@ export const IntelligenceFeedPage: React.FC = () => {
 
       {/* Feed Stream */}
       <div className="space-y-4">
-        {signals.map((item) => (
+        {filteredSignals.map((item) => (
           <div
             key={item.id}
             className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:border-indigo-500/50 transition-all space-y-3"
@@ -163,6 +206,19 @@ export const IntelligenceFeedPage: React.FC = () => {
             {/* Header Tags */}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2">
+                {/* Provenance Badge */}
+                {item.is_crawled ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-cyan-50 text-cyan-700 dark:bg-cyan-950/60 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800">
+                    <Radio className="w-2.5 h-2.5 text-cyan-500" />
+                    <span>Genuinely Crawled</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                    <Database className="w-2.5 h-2.5 text-indigo-500" />
+                    <span>Seeded Baseline</span>
+                  </span>
+                )}
+
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                   {item.category}
                 </span>
@@ -207,7 +263,7 @@ export const IntelligenceFeedPage: React.FC = () => {
               </p>
             </div>
 
-            {/* Traceable Evidence Box (Requirement G) */}
+            {/* Traceable Evidence Box */}
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border-l-2 border-indigo-500 text-xs text-slate-700 dark:text-slate-300 italic">
               <strong className="not-italic text-slate-900 dark:text-white block text-[10px] uppercase font-bold text-indigo-600 dark:text-indigo-400 mb-0.5">
                 Verifiable Ground-Truth Evidence:
@@ -223,9 +279,13 @@ export const IntelligenceFeedPage: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-3 shrink-0 text-slate-400 font-mono text-[11px]">
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1" title={item.publication_date ? `Published: ${item.publication_date}` : `Crawled: ${item.discovery_date}`}>
                   <Calendar className="w-3 h-3" />
-                  <span>{new Date(item.discovery_date).toLocaleDateString()}</span>
+                  <span>
+                    {item.publication_date
+                      ? `Pub: ${new Date(item.publication_date).toLocaleDateString()}`
+                      : `Crawled: ${new Date(item.discovery_date).toLocaleDateString()}`}
+                  </span>
                 </span>
                 {item.original_url && (
                   <a
@@ -242,6 +302,12 @@ export const IntelligenceFeedPage: React.FC = () => {
             </div>
           </div>
         ))}
+
+        {filteredSignals.length === 0 && (
+          <div className="p-12 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-400">
+            <p className="text-sm">No signals match the selected filters.</p>
+          </div>
+        )}
       </div>
 
       {/* Explainable Ranking Breakdown Modal */}

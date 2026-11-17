@@ -51,6 +51,8 @@ class IntelligenceResponse(BaseModel):
     ranking_score: float
     ranking_breakdown: Optional[Dict[str, Any]] = None
     is_archived: bool
+    is_crawled: bool = False
+    confidence_level: Optional[str] = "High"
     created_at: datetime
 
     class Config:

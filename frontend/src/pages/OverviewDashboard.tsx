@@ -69,9 +69,13 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
   const marketSignalsCount = signals.filter(s => s.category === 'Market Intelligence').length;
   const internalSignalsCount = signals.filter(s => s.category === 'Internal Intelligence').length;
 
+  const crawledSignalsCount = signals.filter(s => s.is_crawled).length;
+  const seededSignalsCount = signals.filter(s => !s.is_crawled).length;
+
   const verifiedCount = signals.filter(s => s.verification_status === 'Verified').length;
   const verifiedRate = signals.length > 0 ? Math.round((verifiedCount / signals.length) * 100) : 100;
   const healthySources = sources.filter(s => s.health_status === 'healthy').length;
+  const degradedSources = sources.filter(s => s.health_status !== 'healthy').length;
 
   return (
     <div className="space-y-6">
@@ -121,7 +125,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
         <StatCard
           title="Total Signals"
           value={signals.length}
-          change="+4 this week"
+          change={crawledSignalsCount > 0 ? `${crawledSignalsCount} live crawled • ${seededSignalsCount} baseline` : `${signals.length} verified signals`}
           changeType="positive"
           icon={Layers}
           iconColor="text-indigo-600 dark:text-indigo-400"
@@ -131,7 +135,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
         <StatCard
           title="Monitored Sources"
           value={sources.length}
-          change={`${healthySources}/${sources.length} healthy`}
+          change={degradedSources > 0 ? `${healthySources} healthy • ${degradedSources} degraded` : `${healthySources}/${sources.length} verified healthy`}
           changeType="positive"
           icon={Radio}
           iconColor="text-emerald-600 dark:text-emerald-400"

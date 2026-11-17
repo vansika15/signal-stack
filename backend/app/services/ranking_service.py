@@ -23,22 +23,22 @@ class RankingService:
     }
 
     LEVEL_SCORES = {
-        "High": 1.0,
-        "Medium": 0.6,
-        "Low": 0.25
+        "High": 0.92,
+        "Medium": 0.60,
+        "Low": 0.20
     }
 
     URGENCY_SCORES = {
-        "Immediate": 1.0,
-        "Short-Term": 0.75,
+        "Immediate": 0.95,
+        "Short-Term": 0.70,
         "Medium-Term": 0.45,
         "Watchlist": 0.20
     }
 
     VERIFICATION_SCORES = {
-        "Verified": 1.0,
-        "Pending Verification": 0.65,
-        "Unverified": 0.30
+        "Verified": 0.95,
+        "Pending Verification": 0.60,
+        "Unverified": 0.25
     }
 
     @classmethod
@@ -52,39 +52,53 @@ class RankingService:
         verification_status: str = "Verified",
         publication_date: datetime.datetime = None,
         discovery_date: datetime.datetime = None,
-        is_novel: bool = True
+        is_novel: bool = True,
+        evidence_text: str = "",
+        is_critical_statutory: bool = False
     ) -> Dict[str, Any]:
-        # 1. Relevance
-        rel_factor = cls.LEVEL_SCORES.get(strategic_relevance, 0.6)
+        # 1. Strategic Relevance (Essential Gatekeeper)
+        rel_factor = cls.LEVEL_SCORES.get(strategic_relevance, 0.60)
         
-        # 2. Impact
-        impact_factor = cls.LEVEL_SCORES.get(business_impact, 0.6)
+        # 2. Business Impact
+        impact_factor = cls.LEVEL_SCORES.get(business_impact, 0.60)
         
         # 3. Urgency
-        urg_factor = cls.URGENCY_SCORES.get(urgency, 0.5)
+        urg_factor = cls.URGENCY_SCORES.get(urgency, 0.45)
         
-        # 4. Credibility (combination of source reliability, evidence strength, verification)
-        rel_score = cls.LEVEL_SCORES.get(source_reliability, 0.6)
-        ev_score = cls.LEVEL_SCORES.get(evidence_strength, 0.6)
-        ver_score = cls.VERIFICATION_SCORES.get(verification_status, 0.65)
-        cred_factor = (rel_score * 0.4) + (ev_score * 0.4) + (ver_score * 0.2)
+        # 4. Credibility & Evidence Strength
+        rel_score = cls.LEVEL_SCORES.get(source_reliability, 0.60)
+        
+        # Check if evidence contains concrete quantitative ground-truth (stats, %, currency, numbers)
+        has_metrics = bool(evidence_text and any(char in evidence_text for char in ["%", "$", "£", "€", "₹", "AUD", "CAD", "USD"]) or any(word in (evidence_text or "").lower() for word in ["cap", "quota", "million", "billion", "intake", "deadline"]))
+        
+        if evidence_strength == "High" and has_metrics:
+            ev_score = 0.95
+        elif evidence_strength == "High":
+            ev_score = 0.80
+        elif evidence_strength == "Medium":
+            ev_score = 0.55
+        else:
+            ev_score = 0.25
+
+        ver_score = cls.VERIFICATION_SCORES.get(verification_status, 0.60)
+        cred_factor = (rel_score * 0.40) + (ev_score * 0.40) + (ver_score * 0.20)
         
         # 5. Recency
         effective_date = publication_date or discovery_date or datetime.datetime.utcnow()
         days_old = max(0, (datetime.datetime.utcnow() - effective_date).days)
         if days_old <= 2:
-            recency_factor = 1.0
+            recency_factor = 0.95
         elif days_old <= 7:
-            recency_factor = 0.85
+            recency_factor = 0.80
         elif days_old <= 14:
-            recency_factor = 0.65
+            recency_factor = 0.60
         elif days_old <= 30:
             recency_factor = 0.40
         else:
             recency_factor = 0.20
             
         # 6. Novelty
-        novelty_factor = 1.0 if is_novel else 0.5
+        novelty_factor = 0.90 if is_novel else 0.45
 
         # Weighted calculation (0 - 100 scale)
         weighted_sum = (
@@ -95,7 +109,24 @@ class RankingService:
             (recency_factor * cls.WEIGHTS["recency"]) +
             (novelty_factor * cls.WEIGHTS["novelty"])
         )
-        total_score = round(weighted_sum * 100, 1)
+        raw_score = weighted_sum * 100
+
+        # Calibrate & enforce guardrails:
+        # - Low relevance caps total score at 45.0 (Relevance is Essential)
+        # - Medium relevance caps total score at 75.0
+        # - A score of 100.0 is exceptionally rare and justified ONLY when:
+        #   Critical statutory mandate + High Relevance + High Impact + Immediate Urgency + High Credibility + Concrete Metrics
+        if strategic_relevance == "Low":
+            total_score = min(45.0, round(raw_score, 1))
+        elif strategic_relevance == "Medium":
+            total_score = min(75.0, round(raw_score, 1))
+        else:
+            # High relevance
+            if is_critical_statutory and urgency == "Immediate" and business_impact == "High" and has_metrics and cred_factor > 0.90:
+                total_score = 100.0
+            else:
+                # Normal high scores peak at 85.0 - 94.0
+                total_score = round(min(94.0, raw_score), 1)
 
         breakdown = {
             "total_score": total_score,
