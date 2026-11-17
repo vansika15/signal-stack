@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - DATABASE_URL=sqlite:///./signal_stack.db
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - SCHEDULER_ENABLED=true
+      - SCHEDULER_TIMEZONE=UTC
+    volumes:
+      - ./data:/app/data
+      - ./reports_pdf:/app/reports_pdf
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
