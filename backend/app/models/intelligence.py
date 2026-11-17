@@ -47,9 +47,15 @@ class IntelligenceItem(Base):
         """Distinguish genuinely crawled web records from seeded baseline demo data"""
         if not self.id:
             return False
-        # Seeded records have IDs like 'intel_mu_...', 'intel_init_...', etc.
+        # Seeded records have IDs like 'intel_mu_...', 'intel_init_...', 'intel_st_...', 'intel_dd_...'
         # Crawled records are generated with format 'intel_<timestamp>_<source>'
-        return bool(self.source_id and not self.id.startswith("intel_mu_") and not self.id.startswith("intel_init_"))
+        return bool(
+            self.source_id 
+            and not self.id.startswith("intel_mu_") 
+            and not self.id.startswith("intel_init_")
+            and not self.id.startswith("intel_st_")
+            and not self.id.startswith("intel_dd_")
+        )
 
     @property
     def confidence_level(self) -> str:

@@ -42,9 +42,9 @@ class MondayReport(Base):
             c = db.query(IntelligenceItem).filter(IntelligenceItem.company_id == self.company_id).all()
             cnt = sum(1 for item in c if getattr(item, "is_crawled", False))
             db.close()
-            return cnt if cnt > 0 else 28
+            return cnt
         except Exception:
-            return 28
+            return 0
 
     @property
     def demo_signals_count(self) -> int:
@@ -58,9 +58,9 @@ class MondayReport(Base):
             c = db.query(IntelligenceItem).filter(IntelligenceItem.company_id == self.company_id).all()
             cnt = sum(1 for item in c if not getattr(item, "is_crawled", False))
             db.close()
-            return cnt if cnt > 0 else 12
+            return cnt
         except Exception:
-            return 12
+            return 0
 
     @property
     def internal_data_connected(self) -> bool:
