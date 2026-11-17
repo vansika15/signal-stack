@@ -291,7 +291,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
 
       {/* Main Split Grid: High-Impact Signals & Action Tracker */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Left Column: Top Prioritized Signals Feed (Span 2) */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
@@ -322,11 +322,10 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
                       {signal.category}
                     </span>
                     <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        signal.nature === 'Threat'
-                          ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
-                          : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
-                      }`}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${signal.nature === 'Threat'
+                        ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
+                        : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
+                        }`}
                     >
                       {signal.nature}
                     </span>

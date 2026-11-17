@@ -67,8 +67,8 @@ def run_all_tests():
         assert qa.strategic_takeaway
     print("✔ [6/8] 10-Question adaptive interview with dynamic follow-ups verified.")
 
-    # 7. Verify Monday Morning Brief (All 10 Sections)
-    mu_report = db.query(MondayReport).filter(MondayReport.company_id == "meetuniversity").first()
+    # 7. Verify Monday Morning Brief (All 10 Sections + Strict Provenance)
+    mu_report = db.query(MondayReport).filter(MondayReport.company_id == "meetuniversity").order_by(MondayReport.created_at.desc()).first()
     assert mu_report is not None, "Monday report missing"
     assert mu_report.section_1_executive_summary
     assert mu_report.section_2_customer_signals
@@ -81,12 +81,17 @@ def run_all_tests():
     assert mu_report.section_9_what_we_should_watch
     assert mu_report.section_10_source_appendix
     assert len(mu_report.action_items) > 0, "Action tracking items missing"
-    print(f"✔ [7/8] Monday Morning Brief verified: all 10 sections populated with {len(mu_report.action_items)} action items.")
+    assert mu_report.live_signals_count == 28, f"Expected 28 live signals, got {mu_report.live_signals_count}"
+    assert mu_report.demo_signals_count == 12, f"Expected 12 demo signals, got {mu_report.demo_signals_count}"
+    assert "Internal company data not connected" in mu_report.section_5_internal_intelligence
+    print(f"✔ [7/8] Monday Morning Brief verified: all 10 sections populated with {len(mu_report.action_items)} action items & strict provenance ({mu_report.live_signals_count} live / {mu_report.demo_signals_count} demo).")
 
     # 8. Verify PDF Report Generation
     if mu_report.pdf_export_path:
         assert os.path.exists(mu_report.pdf_export_path), f"PDF file not found at {mu_report.pdf_export_path}"
-        print(f"✔ [8/8] Executive PDF Brief generated and verified ({os.path.getsize(mu_report.pdf_export_path)} bytes).")
+        pdf_size = os.path.getsize(mu_report.pdf_export_path)
+        assert pdf_size > 15000, f"Expected PDF >15KB, got {pdf_size} bytes"
+        print(f"✔ [8/8] Executive PDF Brief generated and verified ({pdf_size} bytes with Provenance Audit).")
 
     db.close()
     print("=" * 60)

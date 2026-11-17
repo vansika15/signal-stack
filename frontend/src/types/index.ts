@@ -169,6 +169,9 @@ export interface MondayReport {
   pdf_export_path?: string;
   created_at: string;
   action_items?: ActionItem[];
+  live_signals_count?: number;
+  demo_signals_count?: number;
+  internal_data_connected?: boolean;
 }
 
 export interface ScheduledJobLog {

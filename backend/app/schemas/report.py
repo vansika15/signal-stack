@@ -51,6 +51,9 @@ class MondayReportResponse(BaseModel):
     pdf_export_path: Optional[str] = None
     created_at: datetime
     action_items: List[ActionItemResponse] = []
+    live_signals_count: Optional[int] = 0
+    demo_signals_count: Optional[int] = 0
+    internal_data_connected: Optional[bool] = False
 
     class Config:
         from_attributes = True
