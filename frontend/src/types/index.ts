@@ -76,7 +76,7 @@ export interface Source {
   source_type: string;
   relevance_explanation: string;
   approved_status: 'approved' | 'pending' | 'rejected';
-  health_status: 'healthy' | 'slow' | 'unreachable' | 'rate_limited' | 'pending';
+  health_status: 'healthy' | 'slow' | 'unreachable' | 'rate_limited';
   last_crawled_at?: string;
   last_status_code?: number;
   error_message?: string;
@@ -120,9 +120,8 @@ export interface IntelligenceItem {
   recommended_action: string;
   ranking_score: number;
   ranking_breakdown?: RankingBreakdown;
-  is_archived: boolean;
   is_crawled?: boolean;
-  confidence_level?: string;
+  is_archived: boolean;
   created_at: string;
 }
 

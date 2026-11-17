@@ -23,6 +23,13 @@ def get_company(company_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Company not found")
     return comp
 
+@router.get("/{company_id}/profile", response_model=CompanyProfileResponse)
+def get_company_profile(company_id: str, db: Session = Depends(get_db)):
+    profile = db.query(CompanyProfile).filter(CompanyProfile.company_id == company_id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Company profile not found")
+    return profile
+
 @router.post("/research")
 def research_company(req: CompanyResearchRequest):
     data = AIService.research_company(req.website, req.company_name)

@@ -21,27 +21,46 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
   const [latestReport, setLatestReport] = useState<MondayReport | null>(null);
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [crawling, setCrawling] = useState(false);
   const [selectedSignalForRanking, setSelectedSignalForRanking] = useState<IntelligenceItem | null>(null);
 
   const loadData = async () => {
     if (!activeCompany) return;
     setLoading(true);
+    setLoadError(null);
     try {
-      const [signalsData, sourcesData, compsData, reportsData, actionsData] = await Promise.all([
+      const [signalsRes, sourcesRes, compsRes, reportsRes, actionsRes] = await Promise.allSettled([
         api.getIntelligence(activeCompany.id),
         api.getSources(activeCompany.id),
         api.getCompetitors(activeCompany.id),
         api.getReports(activeCompany.id),
         api.getActionItems(activeCompany.id)
       ]);
-      setSignals(signalsData);
-      setSources(sourcesData);
-      setCompetitors(compsData);
-      if (reportsData.length > 0) setLatestReport(reportsData[0]);
-      setActionItems(actionsData);
-    } catch (err) {
+
+      if (signalsRes.status === 'fulfilled') {
+        setSignals(signalsRes.value);
+      }
+      if (sourcesRes.status === 'fulfilled') {
+        setSources(sourcesRes.value);
+      }
+      if (compsRes.status === 'fulfilled') {
+        setCompetitors(compsRes.value);
+      }
+      if (reportsRes.status === 'fulfilled' && reportsRes.value.length > 0) {
+        setLatestReport(reportsRes.value[0]);
+      }
+      if (actionsRes.status === 'fulfilled') {
+        setActionItems(actionsRes.value);
+      }
+
+      // If all failed, flag error
+      if (signalsRes.status === 'rejected' && sourcesRes.status === 'rejected') {
+        setLoadError('Failed to retrieve intelligence records from backend API.');
+      }
+    } catch (err: any) {
       console.error('Failed to load overview data:', err);
+      setLoadError(err?.message || 'Error communicating with intelligence server.');
     } finally {
       setLoading(false);
     }
@@ -69,13 +88,59 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
   const marketSignalsCount = signals.filter(s => s.category === 'Market Intelligence').length;
   const internalSignalsCount = signals.filter(s => s.category === 'Internal Intelligence').length;
 
-  const crawledSignalsCount = signals.filter(s => s.is_crawled).length;
-  const seededSignalsCount = signals.filter(s => !s.is_crawled).length;
-
   const verifiedCount = signals.filter(s => s.verification_status === 'Verified').length;
   const verifiedRate = signals.length > 0 ? Math.round((verifiedCount / signals.length) * 100) : 100;
   const healthySources = sources.filter(s => s.health_status === 'healthy').length;
+  const crawledSignalsCount = signals.filter(s => s.is_crawled).length;
+  const seededSignalsCount = signals.filter(s => !s.is_crawled).length;
   const degradedSources = sources.filter(s => s.health_status !== 'healthy').length;
+
+  if (!activeCompany) {
+    return (
+      <div className="p-12 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">No Active Company Selected</h3>
+        <p className="text-xs text-slate-500">Please choose a company from the switcher or initialize setup.</p>
+        <button
+          onClick={() => onNavigate('company-setup')}
+          className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md"
+        >
+          Setup Company
+        </button>
+      </div>
+    );
+  }
+
+  if (loading && signals.length === 0) {
+    return (
+      <div className="p-16 flex flex-col items-center justify-center space-y-4">
+        <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <div className="text-center">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+            Loading {activeCompany.name} Command Center...
+          </h3>
+          <p className="text-xs text-slate-500 mt-1">
+            Aggregating 4 pillars, monitored sources, and 6-factor algorithmic rankings
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError && signals.length === 0) {
+    return (
+      <div className="p-8 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-center space-y-3">
+        <AlertTriangle className="w-8 h-8 text-rose-500 mx-auto" />
+        <h3 className="text-sm font-bold text-rose-800 dark:text-rose-200">Unable to Load Intelligence Signals</h3>
+        <p className="text-xs text-rose-600 dark:text-rose-300">{loadError}</p>
+        <button
+          onClick={loadData}
+          className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-sm"
+        >
+          Retry Connection
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
