@@ -56,6 +56,18 @@ class CrawlerService:
         "applyboard", "idp", "leverageedu", "studyportals", "counselor", "counselling", "loan", "forex"
     ]
 
+    STRIPE_KEYWORDS = [
+        "payment", "payments", "interchange", "checkout", "gateway", "merchant", "merchants",
+        "fintech", "pos", "terminal", "point of sale", "transaction", "processing",
+        "credit card", "debit card", "swipe fee", "swipe fees", "card fee", "card networks",
+        "visa", "mastercard", "amex", "digital wallet", "wallet", "adyen", "braintree",
+        "paypal", "checkout.com", "square", "block", "paddle", "stablecoin", "crypto",
+        "usdc", "usdt", "fednow", "ach", "sepa", "swift", "real-time payment", "real-time payments",
+        "instant payment", "instant payments", "open banking", "api", "billing", "subscription",
+        "fraud", "radar", "take-rate", "basis points", "bps", "fee", "fees", "chargeback",
+        "settlement", "bank", "banking", "lending", "federal reserve", "tempo", "chain"
+    ]
+
     @classmethod
     def check_robots_allowed(cls, url: str) -> bool:
         """Checks if URL is permitted by robots.txt"""
@@ -134,10 +146,15 @@ class CrawlerService:
         return False
 
     @classmethod
-    def calculate_domain_relevance(cls, text: str) -> Dict[str, Any]:
-        """Calculates keyword overlap with MeetUniversity strategic domain"""
+    def calculate_domain_relevance(cls, text: str, company_id: str = "meetuniversity") -> Dict[str, Any]:
+        """Calculates keyword overlap with company strategic domain"""
         text_lower = text.lower()
-        matches = [kw for kw in cls.MEETUNIVERSITY_KEYWORDS if kw in text_lower]
+        if company_id == "stripe":
+            keywords = cls.STRIPE_KEYWORDS
+        else:
+            keywords = cls.MEETUNIVERSITY_KEYWORDS
+
+        matches = [kw for kw in keywords if kw in text_lower]
         unique_matches = list(set(matches))
         
         if len(unique_matches) >= 3:
@@ -237,6 +254,9 @@ class CrawlerService:
                 if res.status_code == 429:
                     health_status = "rate_limited"
                     error_details = "HTTP 429 Rate Limited"
+                elif res.status_code == 403:
+                    health_status = "unreachable"
+                    error_details = "HTTP 403 Forbidden (Anti-bot / WAF access restrictions applied; scraper bypass disallowed)"
                 elif res.status_code >= 400:
                     health_status = "unreachable"
                     error_details = f"HTTP Error {res.status_code}"
@@ -268,110 +288,135 @@ class CrawlerService:
                         has_changes = True
                         source.content_hash = content_hash
 
-                        # Extract meaningful headline
-                        candidate_headings = []
-                        # Look inside article structures first
-                        article_containers = soup.find_all(["article", "main", "section"])
-                        search_areas = article_containers if article_containers else [soup]
+                        # Extract structured candidate articles from cards/feeds first
+                        candidate_cards = soup.find_all(["article", "div", "li"], class_=re.compile(r'feed__item|post|card|article|item|teaser|story', re.I))
+                        extracted_articles = []
 
-                        for area in search_areas:
-                            for h in area.find_all(["h1", "h2", "h3"]):
-                                text = h.get_text().strip()
-                                text = re.sub(r'\s+', ' ', text)
-                                if 20 <= len(text) <= 220 and not cls.is_boilerplate(text):
-                                    # Score candidate heading by domain relevance
-                                    rel = cls.calculate_domain_relevance(text)
-                                    candidate_headings.append({
-                                        "text": text,
-                                        "relevance_level": rel["level"],
-                                        "match_count": rel["match_count"]
+                        for card in candidate_cards:
+                            h = card.find(["h1", "h2", "h3", "h4"])
+                            if not h:
+                                continue
+                            h_text = re.sub(r'\s+', ' ', h.get_text().strip())
+                            if len(h_text) < 18 or cls.is_boilerplate(h_text):
+                                continue
+
+                            rel = cls.calculate_domain_relevance(h_text, company_id=source.company_id)
+                            if rel["level"] in ["High", "Medium"]:
+                                p = card.find("p")
+                                p_text = re.sub(r'\s+', ' ', p.get_text().strip()) if p else ""
+                                link = card.find("a")
+                                href = urllib.parse.urljoin(source.url, link.get("href", "")) if link else source.url
+                                
+                                if not any(ea["headline"] == h_text for ea in extracted_articles):
+                                    extracted_articles.append({
+                                        "headline": h_text,
+                                        "summary": p_text if len(p_text) >= 30 else f"Verified development published by {source.name}.",
+                                        "evidence": f"\"{p_text}\" - Monitored live on {source.name}" if len(p_text) >= 20 else f"Monitored live on {source.name} ({href})",
+                                        "url": href,
+                                        "relevance": rel["level"]
+                                    })
+                                    if len(extracted_articles) >= 2:
+                                        break
+
+                        # Process extracted articles or fall back to single heading
+                        articles_to_save = []
+                        if extracted_articles:
+                            articles_to_save = extracted_articles
+                        else:
+                            # Fallback heading discovery
+                            candidate_headings = []
+                            article_containers = soup.find_all(["article", "main", "section"])
+                            search_areas = article_containers if article_containers else [soup]
+
+                            for area in search_areas:
+                                for h in area.find_all(["h1", "h2", "h3"]):
+                                    text = h.get_text().strip()
+                                    text = re.sub(r'\s+', ' ', text)
+                                    if 20 <= len(text) <= 220 and not cls.is_boilerplate(text):
+                                        rel = cls.calculate_domain_relevance(text, company_id=source.company_id)
+                                        candidate_headings.append({
+                                            "text": text,
+                                            "relevance_level": rel["level"],
+                                            "match_count": rel["match_count"]
+                                        })
+
+                            candidate_headings.sort(key=lambda x: (x["match_count"], len(x["text"])), reverse=True)
+
+                            selected_headline = None
+                            if candidate_headings:
+                                selected_headline = candidate_headings[0]["text"]
+                            else:
+                                page_title = (soup.title.string.strip() if soup.title and soup.title.string else "")
+                                if page_title and not cls.is_boilerplate(page_title) and len(page_title) >= 20:
+                                    selected_headline = page_title
+
+                            if selected_headline:
+                                meta_desc_tag = soup.find("meta", attrs={"name": "description"}) or soup.find("meta", attrs={"property": "og:description"})
+                                meta_desc = str(meta_desc_tag.get("content")).strip() if meta_desc_tag and hasattr(meta_desc_tag, "get") and meta_desc_tag.get("content") else ""
+                                summary = meta_desc if (meta_desc and not cls.is_boilerplate(meta_desc) and len(meta_desc) >= 40) else (raw_paragraphs[0] if raw_paragraphs else f"Monitored development on {source.name}.")
+                                
+                                candidate_evidence = [p for p in raw_paragraphs if len(p) >= 45 and not cls.is_boilerplate(p)]
+                                metric_paras = [p for p in candidate_evidence if any(sym in p for sym in ["%", "$", "£", "€", "₹", "AUD", "CAD", "USD", "bps"]) or any(kw in p.lower() for kw in ["cap", "fee", "rate", "volume", "settlement"])]
+                                evidence = metric_paras[0] if metric_paras else (candidate_evidence[0] if candidate_evidence else f"Extracted directly from verified source publication at {source.url}.")
+                                
+                                combined_analysis = f"{selected_headline} {summary} {evidence}"
+                                rel_info = cls.calculate_domain_relevance(combined_analysis, company_id=source.company_id)
+                                
+                                # Reject if Low relevance
+                                if rel_info["level"] == "Low" and "Competitor" not in source.source_type and "Regulatory" not in source.source_type:
+                                    logger.info(f"Rejected low-relevance generic snippet from {source.name}: '{selected_headline}'")
+                                else:
+                                    articles_to_save.append({
+                                        "headline": selected_headline,
+                                        "summary": summary,
+                                        "evidence": f"\"{evidence[:500]}\"",
+                                        "url": source.url,
+                                        "relevance": rel_info["level"]
                                     })
 
-                        # Sort headings: prioritize domain relevance count, then length
-                        candidate_headings.sort(key=lambda x: (x["match_count"], len(x["text"])), reverse=True)
-
-                        selected_headline = None
-                        if candidate_headings:
-                            selected_headline = candidate_headings[0]["text"]
-                        else:
-                            page_title = (soup.title.string.strip() if soup.title and soup.title.string else "")
-                            if page_title and not cls.is_boilerplate(page_title) and len(page_title) >= 20:
-                                selected_headline = page_title
-                            else:
-                                selected_headline = f"Strategic Policy & Market Update from {source.name}"
-
-                        # Extract meaningful summary
-                        meta_desc_tag = soup.find("meta", attrs={"name": "description"}) or soup.find("meta", attrs={"property": "og:description"})
-                        meta_desc = ""
-                        if meta_desc_tag and hasattr(meta_desc_tag, "get") and meta_desc_tag.get("content"):
-                            meta_desc = str(meta_desc_tag.get("content")).strip()
-                        
-                        if meta_desc and not cls.is_boilerplate(meta_desc) and len(meta_desc) >= 40:
-                            summary = meta_desc
-                        elif raw_paragraphs:
-                            summary = raw_paragraphs[0]
-                        else:
-                            summary = f"Verified international education development monitored on {source.name}."
-
-                        # Extract verifiable evidence excerpt (prioritize paragraphs with stats/numbers/currency)
-                        candidate_evidence = [p for p in raw_paragraphs if len(p) >= 45 and not cls.is_boilerplate(p)]
-                        evidence = None
-                        
-                        # Look for paragraph with concrete quantitative metrics
-                        metric_paras = [
-                            p for p in candidate_evidence
-                            if any(sym in p for sym in ["%", "$", "£", "€", "₹", "AUD", "CAD", "USD"]) or any(kw in p.lower() for kw in ["cap", "quota", "intake", "deadline", "fee"])
-                        ]
-                        if metric_paras:
-                            evidence = metric_paras[0]
-                        elif len(candidate_evidence) > 1:
-                            evidence = candidate_evidence[1]
-                        elif candidate_evidence:
-                            evidence = candidate_evidence[0]
-                        else:
-                            evidence = f"Extracted directly from verified source publication at {source.url}."
-
-                        # Extract publication date
+                        # Save extracted signals
                         publication_date = cls.extract_publication_date(soup, fallback_date=crawled_at)
-
-                        # Determine strategic relevance & filter out pure irrelevant noise
-                        combined_analysis_text = f"{selected_headline} {summary} {evidence}"
-                        relevance_info = cls.calculate_domain_relevance(combined_analysis_text)
-                        
-                        # If the content has zero relevance to MeetUniversity, reject creating low-value noise
-                        if relevance_info["level"] == "Low" and "Competitor" not in source.source_type and "Regulatory" not in source.source_type:
-                            logger.info(f"Rejected low-relevance generic snippet from {source.name}: '{selected_headline}'")
-                        else:
-                            strategic_relevance = relevance_info["level"]
-                            if "Regulatory" in source.source_type or "Competitor" in source.source_type:
-                                if strategic_relevance == "Low":
-                                    strategic_relevance = "Medium"
+                        for art in articles_to_save:
+                            headline = art["headline"]
+                            summary = art["summary"]
+                            evidence = art["evidence"]
+                            orig_url = art["url"]
+                            strategic_relevance = art["relevance"]
+                            if ("Regulatory" in source.source_type or "Competitor" in source.source_type) and strategic_relevance == "Low":
+                                strategic_relevance = "Medium"
 
                             # Categorization based on source type
-                            category = "Market Intelligence"
                             if "Competitor" in source.source_type:
                                 category = "Competitor Intelligence"
                             elif "Review" in source.source_type or "Community" in source.source_type:
                                 category = "Customer Intelligence"
                             elif "Regulatory" in source.source_type or "News" in source.source_type:
                                 category = "Market Intelligence"
+                            else:
+                                category = "Market Intelligence"
 
                             # Threat vs Opportunity
-                            lower_headline = selected_headline.lower()
-                            lower_evidence = evidence.lower()
-                            threat_words = ["cap", "cut", "ban", "restriction", "refusal", "rejection", "drop", "tighten", "fee hike", "delay", "crackdown", "decline"]
-                            is_threat = any(tw in lower_headline or tw in lower_evidence for tw in threat_words)
-                            nature = "Threat" if is_threat else "Opportunity"
+                            lower_h = headline.lower()
+                            lower_ev = evidence.lower()
+                            if source.company_id == "stripe":
+                                threat_words = ["trial", "sue", "lawsuit", "antitrust", "preemption", "cap", "cut", "ban", "restriction", "refusal", "rejection", "drop", "tighten", "fee hike", "delay", "crackdown", "decline", "outage", "fraud", "scam"]
+                                is_threat = any(tw in lower_h or tw in lower_ev for tw in threat_words)
+                                urgency = "Immediate" if (is_threat or "settlement" in lower_h or "fee" in lower_h or "Regulatory" in source.source_type) else "Short-Term"
+                                rec_action = f"Evaluate impact of this {source.name} strategic development on payment routing, interchange margins, or partner integrations."
+                            else:
+                                threat_words = ["cap", "cut", "ban", "restriction", "refusal", "rejection", "drop", "tighten", "fee hike", "delay", "crackdown", "decline"]
+                                is_threat = any(tw in lower_h or tw in lower_ev for tw in threat_words)
+                                urgency = "Immediate" if (is_threat or "visa" in lower_h or "permit" in lower_h or "Regulatory" in source.source_type) else "Short-Term"
+                                rec_action = f"Analyze implications of this {source.name} strategic development for current student intake and visa conversion."
 
-                            # Urgency
-                            urgency = "Immediate" if (is_threat or "visa" in lower_headline or "permit" in lower_headline or "Regulatory" in source.source_type) else "Short-Term"
+                            nature = "Threat" if is_threat else "Opportunity"
                             business_impact = "High" if (strategic_relevance == "High" or "Regulatory" in source.source_type) else "Medium"
-                            is_critical_statutory = bool("Regulatory" in source.source_type and "visa" in lower_headline and is_threat)
+                            is_critical_statutory = bool("Regulatory" in source.source_type and is_threat)
 
                             # Deduplicate against existing signals
                             existing = db.query(IntelligenceItem).filter(
                                 IntelligenceItem.company_id == source.company_id,
-                                IntelligenceItem.headline == selected_headline[:250]
+                                IntelligenceItem.headline == headline[:250]
                             ).first()
 
                             if not existing:
@@ -380,7 +425,7 @@ class CrawlerService:
                                     business_impact=business_impact,
                                     urgency=urgency,
                                     source_reliability="High",
-                                    evidence_strength="High" if metric_paras else "Medium",
+                                    evidence_strength="High" if len(evidence) >= 40 else "Medium",
                                     verification_status="Verified",
                                     publication_date=publication_date,
                                     discovery_date=crawled_at,
@@ -393,20 +438,20 @@ class CrawlerService:
                                     company_id=source.company_id,
                                     source_id=source.id,
                                     category=category,
-                                    headline=selected_headline[:250],
+                                    headline=headline[:250],
                                     summary=summary[:1000],
-                                    evidence=f"\"{evidence[:500]}\"",
-                                    original_url=source.url,
+                                    evidence=evidence[:500],
+                                    original_url=orig_url,
                                     publication_date=publication_date,
                                     discovery_date=crawled_at,
                                     verification_status="Verified",
                                     source_reliability="High",
-                                    evidence_strength="High" if metric_paras else "Medium",
+                                    evidence_strength="High" if len(evidence) >= 40 else "Medium",
                                     strategic_relevance=strategic_relevance,
                                     business_impact=business_impact,
                                     nature=nature,
                                     urgency=urgency,
-                                    recommended_action=f"Analyze implications of this {source.name} strategic development for current student intake.",
+                                    recommended_action=rec_action,
                                     ranking_score=ranking["score"],
                                     ranking_breakdown=ranking["breakdown"],
                                     is_archived=False
