@@ -5,7 +5,7 @@ import datetime
 import time
 
 from ..database import get_db
-from ..models.company import Company
+from ..models.company import Company, CompanyProfile
 from ..models.interview import InterviewSession, InterviewQA
 from ..schemas.interview import (
     InterviewSessionResponse, InterviewQAResponse, AnswerSubmission, FollowUpAnswerSubmission
@@ -20,13 +20,41 @@ def get_or_create_session(company_id: str, db: Session = Depends(get_db)):
     if not comp:
         raise HTTPException(status_code=404, detail="Company not found")
 
-    session = db.query(InterviewSession).filter(
+    sessions = db.query(InterviewSession).filter(
         InterviewSession.company_id == company_id
-    ).order_by(InterviewSession.created_at.desc()).first()
+    ).order_by(InterviewSession.created_at.desc()).all()
 
-    if not session:
-        session = start_new_interview(company_id, db)
-    return session
+    if not sessions:
+        return start_new_interview(company_id, db)
+
+    # Prioritize completed sessions or sessions with answered questions
+    best_session = None
+    max_score = -1
+
+    for s in sessions:
+        answered_count = db.query(InterviewQA).filter(
+            InterviewQA.session_id == s.id,
+            InterviewQA.is_answered == True
+        ).count()
+        score = (100 if s.status == "completed" else 0) + answered_count
+        if score > max_score:
+            max_score = score
+            best_session = s
+
+    # Clean up empty (0 answered) abandoned sessions if an answered/completed session exists
+    if max_score > 0:
+        for s in sessions:
+            if s.id != best_session.id:
+                ans = db.query(InterviewQA).filter(
+                    InterviewQA.session_id == s.id,
+                    InterviewQA.is_answered == True
+                ).count()
+                if ans == 0:
+                    db.query(InterviewQA).filter(InterviewQA.session_id == s.id).delete()
+                    db.delete(s)
+        db.commit()
+
+    return best_session or sessions[0]
 
 @router.post("/{company_id}/start", response_model=InterviewSessionResponse)
 def start_new_interview(company_id: str, db: Session = Depends(get_db)):
@@ -103,6 +131,18 @@ def submit_answer(session_id: str, qa_id: str, submission: AnswerSubmission, db:
     if answered_count >= session.total_questions:
         session.status = "completed"
         session.completed_at = datetime.datetime.utcnow()
+
+        # Reflect completed interview strategic takeaways into CompanyProfile
+        prof = db.query(CompanyProfile).filter(CompanyProfile.company_id == session.company_id).first()
+        if prof:
+            all_qas = db.query(InterviewQA).filter(InterviewQA.session_id == session_id).order_by(InterviewQA.question_number).all()
+            takeaways = [q.strategic_takeaway for q in all_qas if q.strategic_takeaway]
+            priorities = list(prof.strategic_priorities or [])
+            for t in takeaways:
+                if t and t not in priorities and len(priorities) < 5:
+                    priorities.append(t)
+            prof.strategic_priorities = priorities
+            prof.updated_at = datetime.datetime.utcnow()
 
     db.commit()
     db.refresh(qa)
