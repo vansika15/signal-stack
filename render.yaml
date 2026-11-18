@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: signal-stack-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: python run_backend.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: APP_ENV
+        value: production
+      - key: HOST
+        value: "0.0.0.0"
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: SCHEDULER_ENABLED
+        value: "true"
+      - key: SCHEDULER_TIMEZONE
+        value: "UTC"
+      - key: CRAWL_INTERVAL_HOURS
+        value: "24"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: signal-stack-db
+          property: connectionString
+
+databases:
+  - name: signal-stack-db
+    plan: free
+    databaseName: signal_stack
+    user: signal_user

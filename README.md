@@ -165,6 +165,17 @@ ALL 12 VERIFICATION GATES PASSED PERFECTLY!
 
 ---
 
+## Public Cloud Deployment (Vercel & Render)
+
+Signal Stack is production-ready for public cloud deployment:
+- **Frontend (Vercel)**: Global Edge CDN with automated SPA rewrites via [`frontend/vercel.json`](file:///frontend/vercel.json).
+- **Backend (Render)**: Python FastAPI with dynamic `$PORT` and 0.0.0.0 host binding via [`render.yaml`](file:///render.yaml).
+- **Database (PostgreSQL)**: Fully compatible with Render Managed PostgreSQL or SQLite; automated migration script in [`backend/scripts/migrate_sqlite_to_postgres.py`](file:///backend/scripts/migrate_sqlite_to_postgres.py).
+
+For full step-by-step instructions, see the **[Public Cloud Deployment Guide](file:///docs/DEPLOYMENT_GUIDE.md)**.
+
+---
+
 ## Docker Deployment
 
 To launch the full production stack with Docker Compose:
@@ -177,6 +188,7 @@ docker-compose up --build
 ---
 
 ## Documentation Links
+- [Public Cloud Deployment Guide](file:///docs/DEPLOYMENT_GUIDE.md)
 - [System Architecture](file:///docs/ARCHITECTURE.md)
 - [API Documentation](file:///docs/API_DOCUMENTATION.md)
 - [Technical Engineering Report](file:///docs/TECHNICAL_REPORT.md)

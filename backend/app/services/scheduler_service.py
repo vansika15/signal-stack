@@ -30,7 +30,12 @@ class SchedulerService:
 
     @classmethod
     def init_scheduler(cls):
+        if not settings.SCHEDULER_ENABLED or os.environ.get("TESTING"):
+            logger.info("Scheduler disabled via SCHEDULER_ENABLED or TESTING flag.")
+            return
+
         if cls.scheduler is not None and cls.scheduler.running:
+            logger.info("Scheduler instance already active; skipping duplicate initialization.")
             return
 
         cls.scheduler = BackgroundScheduler(timezone=settings.SCHEDULER_TIMEZONE, daemon=True)

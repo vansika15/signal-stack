@@ -4,10 +4,11 @@ import {
   MondayReport, ActionItem, ScheduledJobLog, AppSettings
 } from '../types';
 
-const BASE_URL = '';
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${url}`, {
+  const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+  const res = await fetch(fullUrl, {
     headers: {
       'Content-Type': 'application/json',
       ...options?.headers,
@@ -149,6 +150,7 @@ export const api = {
   getReports: (companyId: string) => fetchJson<MondayReport[]>(`/api/reports/${companyId}`),
   getReportDetail: (reportId: string) => fetchJson<MondayReport>(`/api/reports/detail/${reportId}`),
   generateReport: (companyId: string) => fetchJson<MondayReport>(`/api/reports/generate/${companyId}`, { method: 'POST' }),
+  getReportPdfUrl: (reportId: string) => `${API_BASE_URL}/api/reports/${reportId}/download-pdf`,
   getActionItems: (companyId: string) => fetchJson<ActionItem[]>(`/api/reports/${companyId}/actions`),
   updateActionItem: (actionId: string, data: Partial<ActionItem>) =>
     fetchJson<ActionItem>(`/api/reports/actions/${actionId}`, {

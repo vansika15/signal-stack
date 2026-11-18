@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     CRAWL_INTERVAL_HOURS: int = 24
     DEFAULT_COMPANY_ID: str = "meetuniversity"
     
+    # Server & CORS
+    HOST: str = "0.0.0.0"
+    PORT: int = 8000
+    CORS_ORIGINS: str = "*"
+    
     # Scheduling CRON
     WEEKLY_REPORT_CRON_DAY: str = "mon"
     WEEKLY_REPORT_CRON_HOUR: int = 8

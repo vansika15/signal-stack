@@ -235,7 +235,7 @@ export const MondayBriefPage: React.FC = () => {
           {selectedReport && (
             <>
               <a
-                href={`/api/reports/${selectedReport.id}/download-pdf`}
+                href={api.getReportPdfUrl(selectedReport.id)}
                 download
                 className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold flex items-center gap-1.5 transition-colors"
               >
