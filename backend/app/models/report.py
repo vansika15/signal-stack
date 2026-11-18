@@ -1,7 +1,10 @@
 import datetime
 from sqlalchemy import Column, String, Text, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
-from ..database import Base
+try:
+    from app.database import Base
+except (ImportError, ValueError):
+    from ..database import Base
 
 class MondayReport(Base):
     __tablename__ = "monday_reports"
@@ -36,8 +39,12 @@ class MondayReport(Base):
         if hasattr(self, "_live_count"):
             return self._live_count
         try:
-            from .intelligence import IntelligenceItem
-            from ..database import SessionLocal
+            try:
+                from app.models.intelligence import IntelligenceItem
+                from app.database import SessionLocal
+            except (ImportError, ValueError):
+                from .intelligence import IntelligenceItem
+                from ..database import SessionLocal
             db = SessionLocal()
             c = db.query(IntelligenceItem).filter(IntelligenceItem.company_id == self.company_id).all()
             cnt = sum(1 for item in c if getattr(item, "is_crawled", False))
@@ -52,8 +59,12 @@ class MondayReport(Base):
         if hasattr(self, "_demo_count"):
             return self._demo_count
         try:
-            from .intelligence import IntelligenceItem
-            from ..database import SessionLocal
+            try:
+                from app.models.intelligence import IntelligenceItem
+                from app.database import SessionLocal
+            except (ImportError, ValueError):
+                from .intelligence import IntelligenceItem
+                from ..database import SessionLocal
             db = SessionLocal()
             c = db.query(IntelligenceItem).filter(IntelligenceItem.company_id == self.company_id).all()
             cnt = sum(1 for item in c if not getattr(item, "is_crawled", False))
