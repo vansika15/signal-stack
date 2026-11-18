@@ -59,9 +59,11 @@ def migrate(sqlite_path: str, pg_url: str):
         logger.error(f"Source SQLite database not found at: {sqlite_path}")
         sys.exit(1)
 
-    # Normalize postgres URL if needed
+    # Normalize postgres URL for SQLAlchemy 2.0 with psycopg2
     if pg_url.startswith("postgres://"):
-        pg_url = pg_url.replace("postgres://", "postgresql://", 1)
+        pg_url = pg_url.replace("postgres://", "postgresql+psycopg2://", 1)
+    elif pg_url.startswith("postgresql://") and not pg_url.startswith("postgresql+"):
+        pg_url = pg_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
     logger.info("=" * 70)
     logger.info("SIGNAL STACK: SQLITE -> POSTGRESQL DATA MIGRATION")

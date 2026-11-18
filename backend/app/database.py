@@ -3,10 +3,12 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from .config import settings
 
-# Normalize PostgreSQL URL if provided by hosting platforms (e.g. Render/Heroku postgres:// -> postgresql://)
+# Normalize PostgreSQL URL for SQLAlchemy 2.0+ with psycopg2 driver
 database_url = settings.DATABASE_URL
 if database_url.startswith("postgres://"):
-    database_url = database_url.replace("postgres://", "postgresql://", 1)
+    database_url = database_url.replace("postgres://", "postgresql+psycopg2://", 1)
+elif database_url.startswith("postgresql://") and not database_url.startswith("postgresql+"):
+    database_url = database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 # SQLite needs connect_args check_same_thread=False
 connect_args = {}
