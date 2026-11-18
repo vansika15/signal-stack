@@ -33,20 +33,24 @@ tests/test_ranking.py::test_ranking_calculation_low_priority PASSED      [100%]
 ## 2. End-to-End System Verification Suite (`run_tests_direct.py`)
 
 ```
-============================================================
-RUNNING SIGNAL STACK AUTOMATED VERIFICATION SUITE
-============================================================
-✔ [1/8] Database initialization and seed completed.
-✔ [2/8] Mandatory company demonstrations verified: ['meetuniversity', 'stripe', 'datadog']
-✔ [3/8] MeetUniversity public sources verified: 20 sources with documented relevance explanations.
-✔ [4/8] Four Signal Stack categories present with 12 intelligence records.
-✔ [5/8] Explainable 6-factor ranking mechanism verified across all intelligence items.
-✔ [6/8] 10-Question adaptive interview with dynamic follow-ups verified.
-✔ [7/8] Monday Morning Brief verified: all 10 sections populated with 3 action items.
-✔ [8/8] Executive PDF Brief generated and verified (8267 bytes).
-============================================================
-ALL 8 VERIFICATION GATES PASSED PERFECTLY!
-============================================================
+=================================================================
+RUNNING SIGNAL STACK COMPREHENSIVE 12-GATE VERIFICATION SUITE
+=================================================================
+✔ [1/12] Database initialization and seed completed.
+✔ [2/12] Mandatory company demonstrations verified: ['meetuniversity', 'stripe', 'datadog']
+✔ [3/12] MeetUniversity public sources verified: 20 sources with documented relevance explanations.
+✔ [4/12] Four Signal Stack categories present with 40 intelligence records.
+✔ [5/12] Explainable 6-factor ranking mechanism verified across all intelligence items.
+✔ [6/12] 10-Question adaptive interview with dynamic follow-ups verified.
+✔ [7/12] MeetUniversity Monday Brief verified: all 10 sections populated with 3 action items & strict provenance (28 live / 12 demo).
+✔ [8/12] MeetUniversity Executive PDF Brief verified (32729 bytes).
+✔ [9/12] Stripe demonstration verified: 6 sources, 6 competitors, 7 live crawled records, 4 demo records.
+✔ [10/12] Datadog demonstration verified: 5 sources, 6 competitors, 7 live crawled records, 4 demo records.
+✔ [11/12] Multi-tenant strict isolation verified: 0 cross-contamination between MeetUniversity, Stripe, and Datadog.
+✔ [12/12] Overall intelligence volume verified: 62 total records (42 live crawled across all companies; requirement was minimum 30).
+=================================================================
+ALL 12 VERIFICATION GATES PASSED PERFECTLY!
+=================================================================
 ```
 
 ---
@@ -63,9 +67,9 @@ transforming...
 rendering chunks...
 computing gzip size...
 dist/index.html                   1.23 kB │ gzip:  0.67 kB
-dist/assets/index-BciOLp-1.css   38.49 kB │ gzip:  6.90 kB
-dist/assets/index-BW9LirHo.js   277.67 kB │ gzip: 71.89 kB
-✓ built in 7.50s
+dist/assets/index-DFFy6Gr9.css   39.89 kB │ gzip:  7.07 kB
+dist/assets/index-D-g5dgMN.js   286.61 kB │ gzip: 73.86 kB
+✓ built in 5.97s
 ```
 
 ---
@@ -74,13 +78,14 @@ dist/assets/index-BW9LirHo.js   277.67 kB │ gzip: 71.89 kB
 
 | Feature / Requirement | Verification Method | Status | Evidence |
 | :--- | :--- | :--- | :--- |
-| **MeetUniversity Setup** | Database Model & Seed Inspection | **PASSED** | 20 Sources, 8 Competitors, Profile Active |
-| **Multi-Company Demos** | Multi-tenant DB query | **PASSED** | MeetUniversity, Stripe, Datadog |
+| **MeetUniversity Setup** | Database Model & Seed Inspection | **PASSED** | 20 Sources, 8 Competitors, 40 Signals (28 Live, 12 Demo) |
+| **Multi-Company Demos** | Multi-tenant DB query | **PASSED** | MeetUniversity, Stripe (11 signals), Datadog (11 signals) |
 | **4 Pillar Signal Stack** | Category Query & Filtering | **PASSED** | Customer, Competitor, Market, Internal |
-| **Explainable 6-Factor Ranker** | Mathematical Weight Assertion | **PASSED** | Formula verification score 0-100 |
-| **10-Question Interview** | Session & QA Model Assertion | **PASSED** | 10 Qs, Context Hints, Follow-ups |
-| **Web Crawler & Change Diff** | Crawler Unit Test & Robots.txt | **PASSED** | SHA-256 Hash diffing, status 200 |
-| **10-Section Monday Brief** | Report Structure & Action Count | **PASSED** | All 10 sections populated |
-| **Executive PDF Export** | ReportLab Generation & File Size | **PASSED** | Valid 8.2 KB PDF file created |
+| **Explainable 6-Factor Ranker** | Mathematical Weight Assertion | **PASSED** | Formula verification score 0-100 with component modal |
+| **10-Question Interview** | Session & QA Model Assertion | **PASSED** | 10 Qs, Ground-Truth Answers, Adaptive Follow-ups |
+| **Web Crawler & Change Diff** | Crawler Unit Test & Robots.txt | **PASSED** | SHA-256 Hash diffing, status 200, HTTP 403 handling |
+| **10-Section Monday Brief** | Report Structure & Action Count | **PASSED** | All 10 sections populated with live action checkboxes |
+| **Executive PDF Export** | ReportLab Generation & File Size | **PASSED** | Valid PDF files (MeetUniv 32.7 KB, Stripe 18.0 KB, Datadog 19.2 KB) |
 | **Background Scheduler** | Daemonized APScheduler Job Log | **PASSED** | Weekly cron + Monthly audit |
-| **TypeScript & UI Build** | `tsc && vite build` | **PASSED** | Zero compile errors, asset bundle ready |
+| **Multi-Tenant Isolation** | Text analysis across all briefs | **PASSED** | Zero cross-contamination between companies |
+| **TypeScript & UI Build** | `tsc && vite build` | **PASSED** | Built in 5.97s, zero errors |

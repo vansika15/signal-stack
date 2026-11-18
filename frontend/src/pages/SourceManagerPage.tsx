@@ -162,11 +162,10 @@ export const SourceManagerPage: React.FC = () => {
             <button
               key={type}
               onClick={() => setFilterType(type)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                filterType === type
-                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
-                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-slate-300'
-              }`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${filterType === type
+                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
+                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                }`}
             >
               {type}
             </button>
@@ -201,22 +200,20 @@ export const SourceManagerPage: React.FC = () => {
                       {source.source_type}
                     </span>
                     <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        source.approved_status === 'approved'
-                          ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
-                          : source.approved_status === 'rejected'
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${source.approved_status === 'approved'
+                        ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
+                        : source.approved_status === 'rejected'
                           ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
                           : 'bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'
-                      }`}
+                        }`}
                     >
                       {source.approved_status.toUpperCase()}
                     </span>
                     <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        source.health_status === 'healthy'
-                          ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
-                          : 'bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
-                      }`}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${source.health_status === 'healthy'
+                        ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
+                        : 'bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
+                        }`}
                     >
                       {source.health_status}
                     </span>

@@ -68,6 +68,14 @@ class CrawlerService:
         "settlement", "bank", "banking", "lending", "federal reserve", "tempo", "chain"
     ]
 
+    DATADOG_KEYWORDS = [
+        "observability", "monitoring", "apm", "metrics", "traces", "tracing", "logs", "logging",
+        "opentelemetry", "otel", "sre", "devops", "cloud", "kubernetes", "k8s", "ebpf",
+        "datadog", "dynatrace", "new relic", "splunk", "grafana", "elastic", "honeycomb",
+        "llm observability", "incident", "outage", "infrastructure", "siem", "cloud security",
+        "davis", "bits ai", "synthetic", "microservices", "latency", "root cause", "agent", "pipeline"
+    ]
+
     @classmethod
     def check_robots_allowed(cls, url: str) -> bool:
         """Checks if URL is permitted by robots.txt"""
@@ -151,6 +159,8 @@ class CrawlerService:
         text_lower = text.lower()
         if company_id == "stripe":
             keywords = cls.STRIPE_KEYWORDS
+        elif company_id == "datadog":
+            keywords = cls.DATADOG_KEYWORDS
         else:
             keywords = cls.MEETUNIVERSITY_KEYWORDS
 
@@ -403,6 +413,11 @@ class CrawlerService:
                                 is_threat = any(tw in lower_h or tw in lower_ev for tw in threat_words)
                                 urgency = "Immediate" if (is_threat or "settlement" in lower_h or "fee" in lower_h or "Regulatory" in source.source_type) else "Short-Term"
                                 rec_action = f"Evaluate impact of this {source.name} strategic development on payment routing, interchange margins, or partner integrations."
+                            elif source.company_id == "datadog":
+                                threat_words = ["outage", "incident", "breach", "vulnerability", "slowdown", "latency", "downtime", "churn", "cost cut", "spend reduction", "disrupt", "challenge"]
+                                is_threat = any(tw in lower_h or tw in lower_ev for tw in threat_words)
+                                urgency = "Immediate" if (is_threat or "latency" in lower_h or "outage" in lower_h or "Regulatory" in source.source_type) else "Short-Term"
+                                rec_action = f"Assess implications of this {source.name} development for cloud observability coverage, ingest costs, or agent deployment."
                             else:
                                 threat_words = ["cap", "cut", "ban", "restriction", "refusal", "rejection", "drop", "tighten", "fee hike", "delay", "crackdown", "decline"]
                                 is_threat = any(tw in lower_h or tw in lower_ev for tw in threat_words)

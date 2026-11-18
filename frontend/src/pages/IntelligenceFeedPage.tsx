@@ -167,11 +167,10 @@ export const IntelligenceFeedPage: React.FC = () => {
                   {item.category}
                 </span>
                 <span
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                    item.nature === 'Threat'
-                      ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
-                      : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
-                  }`}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${item.nature === 'Threat'
+                    ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
+                    : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
+                    }`}
                 >
                   {item.nature}
                 </span>
