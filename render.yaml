@@ -1,6 +1,7 @@
 services:
   - type: web
     name: signal-stack-backend
+    plan: free
     runtime: python
     rootDir: backend
     buildCommand: pip install --upgrade pip && pip install -r requirements.txt
